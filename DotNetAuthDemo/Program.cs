@@ -1,4 +1,7 @@
+using System.Security.Claims;
 using DotNetAuthDemo.Data;
+using DotNetAuthDemo.Entities;
+using DotNetAuthDemo.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -30,7 +33,15 @@ builder.Services.AddDbContext<TDbContext>(
 
 //Authorization
 builder.Services.AddAuthorization();
-builder.Services.AddIdentityApiEndpoints<IdentityUser>()
+builder.Services.AddAuthentication().AddCookie();
+
+
+
+// builder.Services.AddIdentityCore<Person>()
+//     .AddEntityFrameworkStores<TDbContext>()
+//     .AddApiEndpoints();
+
+builder.Services.AddIdentityApiEndpoints<Person>()
     .AddEntityFrameworkStores<TDbContext>();
 
 var app = builder.Build();
@@ -40,9 +51,15 @@ if (app.Environment.IsDevelopment())
 {   
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.ApplyMigrations();
 }
 
-app.MapIdentityApi<IdentityUser>();
+app.MapGet("users/me", async (ClaimsPrincipal claims,TDbContext context) =>
+{
+    string userId = claims.Claims.First(c => c.Type == ClaimTypes.NameIdentifier).Value;
+    return await context.Users.FindAsync(userId);
+}).RequireAuthorization();
+app.MapIdentityApi<Person>();
 
 app.UseHttpsRedirection();
 
